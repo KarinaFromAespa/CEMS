@@ -1,0 +1,116 @@
+﻿@page "/activities"
+@inject AppDbContext Db
+@using CEMS.Models
+@using Microsoft.EntityFrameworkCore
+
+<h3>Activities</h3>
+<button class="btn btn-success mb-3" @onclick="() => showForm = true">+ Add Activity</button>
+
+@if (showForm)
+{
+    <div class="card mb-4 p-3 shadow-sm">
+        <h5>@(editingId == null ? "New Activity" : "Edit Activity")</h5>
+        <div class="mb-2">
+            <label>Name</label>
+            <input class="form-control" @bind="form.Name" />
+        </div>
+        <div class="mb-2">
+            <label>Type</label>
+            <select class="form-select" @bind="form.Type">
+                <option value="">-- Select Type --</option>
+                <option>Workshop</option>
+                <option>Talk</option>
+                <option>Game</option>
+                <option>Other</option>
+            </select>
+        </div>
+        @if (!string.IsNullOrEmpty(formError))
+        {
+            <div class="alert alert-danger py-1">@formError</div>
+        }
+        <div class="mt-2">
+            <button class="btn btn-primary me-2" @onclick="SaveActivity">Save</button>
+            <button class="btn btn-secondary" @onclick="CancelForm">Cancel</button>
+        </div>
+    </div>
+}
+
+<table class="table table-hover">
+    <thead class="table-dark">
+        <tr><th>Name</th><th>Type</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var a in activities)
+        {
+            <tr>
+                <td>@a.Name</td>
+                <td><span class="badge bg-secondary">@a.Type</span></td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" @onclick="() => StartEdit(a)">Edit</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteActivity(a.ActivityId)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Activity> activities = new();
+    private Activity form = new();
+    private int? editingId;
+    private bool showForm;
+    private string formError = "";
+
+    protected override async Task OnInitializedAsync() =>
+        activities = await Db.Activities.ToListAsync();
+
+    private void StartEdit(Activity a)
+    {
+        editingId = a.ActivityId;
+        form = new Activity { Name = a.Name, Type = a.Type };
+        showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        editingId = null;
+        form = new();
+        formError = "";
+    }
+
+    private async Task SaveActivity()
+    {
+        formError = "";
+        if (string.IsNullOrWhiteSpace(form.Name)) { formError = "Name is required."; return; }
+        if (string.IsNullOrWhiteSpace(form.Type)) { formError = "Type is required."; return; }
+
+        try
+        {
+            if (editingId.HasValue)
+            {
+                var existing = await Db.Activities.FindAsync(editingId.Value);
+                if (existing != null) { existing.Name = form.Name; existing.Type = form.Type; }
+            }
+            else
+            {
+                Db.Activities.Add(form);
+            }
+
+            await Db.SaveChangesAsync();
+            activities = await Db.Activities.ToListAsync();
+            CancelForm();
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteActivity(int id)
+    {
+        var a = await Db.Activities.FindAsync(id);
+        if (a != null) { Db.Activities.Remove(a); await Db.SaveChangesAsync(); }
+        activities = await Db.Activities.ToListAsync();
+    }
+}

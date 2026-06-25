@@ -1,0 +1,114 @@
+﻿@page "/events"
+@inject IEventService EventService
+@inject NavigationManager Nav
+@using CEMS.Models
+@using CEMS.Services
+
+<h3>Upcoming Events</h3>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label>Filter by Date</label>
+        <input type="date" class="form-control" @bind="filterDate" />
+    </div>
+    <div class="col-md-3">
+        <label>Filter by Venue</label>
+        <select class="form-select" @bind="filterVenueId">
+            <option value="">-- All Venues --</option>
+            @foreach (var v in venues)
+            {
+                <option value="@v.VenueId">@v.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-primary me-2" @onclick="ApplyFilter">Filter</button>
+        <button class="btn btn-secondary" @onclick="ClearFilter">Clear</button>
+    </div>
+    <div class="col-md-3 d-flex align-items-end justify-content-end">
+        <button class="btn btn-success" @onclick='() => Nav.NavigateTo("/events/create")'>+ New Event</button>
+    </div>
+</div>
+
+@if (events == null)
+{
+    <p>Loading...</p>
+}
+else if (!events.Any())
+{
+    <p class="text-muted">No events found.</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Venue</th>
+                <th>Activities</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var evt in events)
+            {
+                <tr>
+                    <td>@evt.Name</td>
+                    <td>@evt.Date.ToString("dd MMM yyyy") @evt.Time.ToString(@"hh\:mm")</td>
+                    <td>@evt.Venue?.Name</td>
+                    <td>@string.Join(", ", evt.EventActivities.Select(ea => ea.Activity?.Name))</td>
+                    <td>
+                        <button class="btn btn-sm btn-info me-1" @onclick="() => ViewEvent(evt.EventId)">View</button>
+                        <button class="btn btn-sm btn-warning me-1" @onclick="() => EditEvent(evt.EventId)">Edit</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteEvent(evt.EventId)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+@code {
+    private List<Event> events = new();
+    private List<Venue> venues = new();
+    private DateTime? filterDate;
+    private int? filterVenueId;
+    private string message = "";
+
+    [Inject] private AppDbContext DbContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        venues = await DbContext.Venues.ToListAsync();
+        await LoadEvents();
+    }
+
+    private async Task LoadEvents() =>
+        events = await EventService.GetAllEventsAsync();
+
+    private async Task ApplyFilter() =>
+        events = await EventService.FilterEventsAsync(filterDate, filterVenueId == 0 ? null : filterVenueId, null);
+
+    private async Task ClearFilter()
+    {
+        filterDate = null;
+        filterVenueId = null;
+        await LoadEvents();
+    }
+
+    private void ViewEvent(int id) => Nav.NavigateTo($"/events/{id}");
+    private void EditEvent(int id) => Nav.NavigateTo($"/events/edit/{id}");
+
+    private async Task DeleteEvent(int id)
+    {
+        await EventService.DeleteEventAsync(id);
+        message = "Event deleted successfully.";
+        await LoadEvents();
+    }
+}

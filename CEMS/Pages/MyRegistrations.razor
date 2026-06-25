@@ -1,0 +1,94 @@
+﻿@page "/my-registrations"
+@inject AppDbContext Db
+@using CEMS.Models
+@using Microsoft.EntityFrameworkCore
+
+<h3>Look Up Registrations</h3>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="email" class="form-control" placeholder="Enter your email..."
+               @bind="searchEmail" @bind:event="oninput" />
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary" @onclick="Search">Search</button>
+    </div>
+</div>
+
+@if (searched && registrations.Count == 0)
+{
+    <p class="text-muted">No registrations found for that email.</p>
+}
+
+@if (registrations.Any())
+{
+    <h5>Registrations for <strong>@foundName</strong></h5>
+    <table class="table table-hover">
+        <thead class="table-dark">
+            <tr><th>Event</th><th>Date</th><th>Venue</th><th>Status</th><th>Registered On</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var reg in registrations)
+            {
+                <tr>
+                    <td>@reg.Event?.Name</td>
+                    <td>@reg.Event?.Date.ToString("dd MMM yyyy")</td>
+                    <td>@reg.Event?.Venue?.Name</td>
+                    <td><span class="badge bg-@StatusColor(reg.Status)">@reg.Status</span></td>
+                    <td>@reg.RegistrationDate.ToString("dd MMM yyyy")</td>
+                    <td>
+                        @if (reg.Status != "Cancelled")
+                        {
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="() => CancelRegistration(reg.RegistrationId)">
+                                Cancel
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string searchEmail = "";
+    private string foundName = "";
+    private List<Registration> registrations = new();
+    private bool searched;
+
+    private async Task Search()
+    {
+        searched = true;
+        var participant = await Db.Participants
+            .FirstOrDefaultAsync(p => p.Email == searchEmail.Trim());
+
+        if (participant == null) { registrations = new(); return; }
+
+        foundName = participant.Name;
+        registrations = await Db.Registrations
+            .Include(r => r.Event).ThenInclude(e => e!.Venue)
+            .Where(r => r.ParticipantId == participant.ParticipantId)
+            .OrderByDescending(r => r.RegistrationDate)
+            .ToListAsync();
+    }
+
+    private async Task CancelRegistration(int id)
+    {
+        var reg = await Db.Registrations.FindAsync(id);
+        if (reg != null)
+        {
+            reg.Status = "Cancelled";
+            await Db.SaveChangesAsync();
+            await Search(); // Refresh
+        }
+    }
+
+    private string StatusColor(string status) => status switch
+    {
+        "Confirmed" => "success",
+        "Cancelled" => "danger",
+        "Waitlisted" => "warning",
+        _ => "secondary"
+    };
+}

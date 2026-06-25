@@ -1,0 +1,121 @@
+﻿@page "/venues"
+@inject AppDbContext Db
+@inject NavigationManager Nav
+@using CEMS.Models
+@using Microsoft.EntityFrameworkCore
+
+<h3>Venues</h3>
+<button class="btn btn-success mb-3" @onclick="() => showForm = true">+ Add Venue</button>
+
+@if (showForm)
+{
+    <div class="card mb-4 p-3 shadow-sm">
+        <h5>@(editingId == null ? "New Venue" : "Edit Venue")</h5>
+        <div class="mb-2">
+            <label>Name</label>
+            <input class="form-control" @bind="form.Name" />
+        </div>
+        <div class="mb-2">
+            <label>Address</label>
+            <input class="form-control" @bind="form.Address" />
+        </div>
+        <div class="mb-2">
+            <label>Capacity</label>
+            <input type="number" class="form-control" @bind="form.Capacity" />
+        </div>
+        @if (!string.IsNullOrEmpty(formError))
+        {
+            <div class="alert alert-danger py-1">@formError</div>
+        }
+        <div class="mt-2">
+            <button class="btn btn-primary me-2" @onclick="SaveVenue">Save</button>
+            <button class="btn btn-secondary" @onclick="CancelForm">Cancel</button>
+        </div>
+    </div>
+}
+
+<table class="table table-hover">
+    <thead class="table-dark">
+        <tr><th>Name</th><th>Address</th><th>Capacity</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var v in venues)
+        {
+            <tr>
+                <td>@v.Name</td>
+                <td>@v.Address</td>
+                <td>@v.Capacity</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" @onclick="() => StartEdit(v)">Edit</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteVenue(v.VenueId)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Venue> venues = new();
+    private Venue form = new();
+    private int? editingId;
+    private bool showForm;
+    private string formError = "";
+
+    protected override async Task OnInitializedAsync() =>
+        venues = await Db.Venues.ToListAsync();
+
+    private void StartEdit(Venue v)
+    {
+        editingId = v.VenueId;
+        form = new Venue { Name = v.Name, Address = v.Address, Capacity = v.Capacity };
+        showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        editingId = null;
+        form = new();
+        formError = "";
+    }
+
+    private async Task SaveVenue()
+    {
+        formError = "";
+        if (string.IsNullOrWhiteSpace(form.Name)) { formError = "Name is required."; return; }
+        if (form.Capacity <= 0) { formError = "Capacity must be greater than 0."; return; }
+
+        try
+        {
+            if (editingId.HasValue)
+            {
+                var existing = await Db.Venues.FindAsync(editingId.Value);
+                if (existing != null)
+                {
+                    existing.Name = form.Name;
+                    existing.Address = form.Address;
+                    existing.Capacity = form.Capacity;
+                }
+            }
+            else
+            {
+                Db.Venues.Add(form);
+            }
+
+            await Db.SaveChangesAsync();
+            venues = await Db.Venues.ToListAsync();
+            CancelForm();
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteVenue(int id)
+    {
+        var v = await Db.Venues.FindAsync(id);
+        if (v != null) { Db.Venues.Remove(v); await Db.SaveChangesAsync(); }
+        venues = await Db.Venues.ToListAsync();
+    }
+}

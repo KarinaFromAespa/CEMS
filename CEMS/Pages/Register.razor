@@ -1,0 +1,191 @@
+﻿@page "/register"
+@inject AppDbContext Db
+@inject NavigationManager Nav
+@using CEMS.Models
+@using Microsoft.EntityFrameworkCore
+
+<h3>Register for an Event</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm mb-4">
+            <h5>Your Details</h5>
+            <div class="mb-2">
+                <label>Select Existing Participant</label>
+                <select class="form-select" @onchange="OnParticipantSelected">
+                    <option value="0">-- Or enter details below --</option>
+                    @foreach (var p in participants)
+                    {
+                        <option value="@p.ParticipantId">@p.Name (@p.Email)</option>
+                    }
+                </select>
+            </div>
+            <hr />
+            <div class="mb-2">
+                <label>Full Name</label>
+                <input class="form-control" @bind="participantForm.Name" />
+            </div>
+            <div class="mb-2">
+                <label>Email</label>
+                <input type="email" class="form-control" @bind="participantForm.Email" />
+            </div>
+            <div class="mb-2">
+                <label>Phone</label>
+                <input type="tel" class="form-control" @bind="participantForm.Phone" />
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm mb-4">
+            <h5>Choose Event</h5>
+            @foreach (var evt in upcomingEvents)
+            {
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio"
+                           name="eventChoice"
+                           id="evt_@evt.EventId"
+                           @onchange="() => selectedEventId = evt.EventId" />
+                    <label class="form-check-label" for="evt_@evt.EventId">
+                        <strong>@evt.Name</strong><br />
+                        <small class="text-muted">@evt.Date.ToString("dd MMM yyyy") — @evt.Venue?.Name</small>
+                    </label>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+<button class="btn btn-primary" @onclick="SubmitRegistration">Register</button>
+<button class="btn btn-secondary ms-2" @onclick='() => Nav.NavigateTo("/my-registrations")'>View My Registrations</button>
+
+@code {
+    private List<Participant> participants = new();
+    private List<Event> upcomingEvents = new();
+    private Participant participantForm = new();
+    private int? selectedParticipantId;
+    private int selectedEventId;
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        participants = await Db.Participants.ToListAsync();
+        upcomingEvents = await Db.Events
+            .Include(e => e.Venue)
+            .Where(e => e.Date >= DateTime.Today)
+            .OrderBy(e => e.Date)
+            .ToListAsync();
+    }
+
+    private void OnParticipantSelected(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id) && id > 0)
+        {
+            selectedParticipantId = id;
+            var p = participants.FirstOrDefault(x => x.ParticipantId == id);
+            if (p != null)
+            {
+                participantForm.Name = p.Name;
+                participantForm.Email = p.Email;
+                participantForm.Phone = p.Phone;
+            }
+        }
+        else
+        {
+            selectedParticipantId = null;
+            participantForm = new();
+        }
+    }
+
+    private async Task SubmitRegistration()
+    {
+        errorMessage = "";
+        successMessage = "";
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(participantForm.Name)) { errorMessage = "Name is required."; return; }
+        if (string.IsNullOrWhiteSpace(participantForm.Email) || !participantForm.Email.Contains('@'))
+        { errorMessage = "Valid email is required."; return; }
+        if (selectedEventId == 0) { errorMessage = "Please select an event."; return; }
+
+        try
+        {
+            int participantId;
+
+            if (selectedParticipantId.HasValue)
+            {
+                participantId = selectedParticipantId.Value;
+            }
+            else
+            {
+                // Check for existing participant by email
+                var existing = await Db.Participants.FirstOrDefaultAsync(p => p.Email == participantForm.Email);
+                if (existing != null)
+                {
+                    participantId = existing.ParticipantId;
+                }
+                else
+                {
+                    var newP = new Participant
+                    {
+                        Name = participantForm.Name,
+                        Email = participantForm.Email,
+                        Phone = participantForm.Phone
+                    };
+                    Db.Participants.Add(newP);
+                    await Db.SaveChangesAsync();
+                    participantId = newP.ParticipantId;
+                }
+            }
+
+            // Check for duplicate registration
+            bool alreadyRegistered = await Db.Registrations.AnyAsync(r =>
+                r.ParticipantId == participantId && r.EventId == selectedEventId);
+
+            if (alreadyRegistered)
+            {
+                errorMessage = "You are already registered for this event.";
+                return;
+            }
+
+            // Check venue capacity
+            var eventData = await Db.Events.Include(e => e.Registrations)
+                .Include(e => e.Venue)
+                .FirstOrDefaultAsync(e => e.EventId == selectedEventId);
+
+            if (eventData != null && eventData.Venue != null)
+            {
+                int confirmedCount = eventData.Registrations.Count(r => r.Status == "Confirmed");
+                string status = confirmedCount >= eventData.Venue.Capacity ? "Waitlisted" : "Confirmed";
+
+                Db.Registrations.Add(new Registration
+                {
+                    ParticipantId = participantId,
+                    EventId = selectedEventId,
+                    RegistrationDate = DateTime.Now,
+                    Status = status
+                });
+
+                await Db.SaveChangesAsync();
+                successMessage = $"Successfully registered! Status: {status}";
+                participantForm = new();
+                selectedParticipantId = null;
+                selectedEventId = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Registration failed: {ex.Message}";
+        }
+    }
+}

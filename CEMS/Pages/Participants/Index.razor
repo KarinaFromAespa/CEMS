@@ -1,0 +1,128 @@
+﻿@page "/participants"
+@inject AppDbContext Db
+@using CEMS.Models
+@using Microsoft.EntityFrameworkCore
+
+<h3>Participants</h3>
+<button class="btn btn-success mb-3" @onclick="() => showForm = true">+ Add Participant</button>
+
+@if (showForm)
+{
+    <div class="card mb-4 p-3 shadow-sm">
+        <h5>@(editingId == null ? "New Participant" : "Edit Participant")</h5>
+        <div class="mb-2">
+            <label>Full Name</label>
+            <input class="form-control" @bind="form.Name" />
+        </div>
+        <div class="mb-2">
+            <label>Email</label>
+            <input type="email" class="form-control" @bind="form.Email" />
+        </div>
+        <div class="mb-2">
+            <label>Phone</label>
+            <input type="tel" class="form-control" @bind="form.Phone" />
+        </div>
+        @if (!string.IsNullOrEmpty(formError))
+        {
+            <div class="alert alert-danger py-1">@formError</div>
+        }
+        <div class="mt-2">
+            <button class="btn btn-primary me-2" @onclick="SaveParticipant">Save</button>
+            <button class="btn btn-secondary" @onclick="CancelForm">Cancel</button>
+        </div>
+    </div>
+}
+
+<table class="table table-hover">
+    <thead class="table-dark">
+        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Registrations</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var p in participants)
+        {
+            <tr>
+                <td>@p.Name</td>
+                <td>@p.Email</td>
+                <td>@p.Phone</td>
+                <td>@p.Registrations.Count</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" @onclick="() => StartEdit(p)">Edit</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteParticipant(p.ParticipantId)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Participant> participants = new();
+    private Participant form = new();
+    private int? editingId;
+    private bool showForm;
+    private string formError = "";
+
+    protected override async Task OnInitializedAsync() =>
+        participants = await Db.Participants
+            .Include(p => p.Registrations)
+            .ToListAsync();
+
+    private void StartEdit(Participant p)
+    {
+        editingId = p.ParticipantId;
+        form = new Participant { Name = p.Name, Email = p.Email, Phone = p.Phone };
+        showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        editingId = null;
+        form = new();
+        formError = "";
+    }
+
+    private async Task SaveParticipant()
+    {
+        formError = "";
+        if (string.IsNullOrWhiteSpace(form.Name)) { formError = "Name is required."; return; }
+        if (string.IsNullOrWhiteSpace(form.Email)) { formError = "Email is required."; return; }
+        if (!form.Email.Contains('@')) { formError = "Enter a valid email address."; return; }
+
+        try
+        {
+            if (editingId.HasValue)
+            {
+                var existing = await Db.Participants.FindAsync(editingId.Value);
+                if (existing != null)
+                {
+                    existing.Name = form.Name;
+                    existing.Email = form.Email;
+                    existing.Phone = form.Phone;
+                }
+            }
+            else
+            {
+                // Check for duplicate email
+                bool emailExists = await Db.Participants.AnyAsync(p => p.Email == form.Email);
+                if (emailExists) { formError = "A participant with this email already exists."; return; }
+
+                Db.Participants.Add(form);
+            }
+
+            await Db.SaveChangesAsync();
+            participants = await Db.Participants.Include(p => p.Registrations).ToListAsync();
+            CancelForm();
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteParticipant(int id)
+    {
+        var p = await Db.Participants.FindAsync(id);
+        if (p != null) { Db.Participants.Remove(p); await Db.SaveChangesAsync(); }
+        participants = await Db.Participants.Include(p => p.Registrations).ToListAsync();
+    }
+}
