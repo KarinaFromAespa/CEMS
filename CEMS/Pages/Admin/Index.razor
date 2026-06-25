@@ -1,0 +1,108 @@
+﻿@page "/admin"
+@rendermode InteractiveServer
+@inject SessionService Session
+@inject NavigationManager NavigationManager
+@inject AppDbContext Db
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Admin Dashboard</h3>
+    <button class="btn btn-outline-danger btn-sm" @onclick="Logout">Logout</button>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary text-center p-3">
+            <h2>@eventCount</h2>
+            <p class="mb-0">Events</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success text-center p-3">
+            <h2>@participantCount</h2>
+            <p class="mb-0">Participants</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning text-center p-3">
+            <h2>@venueCount</h2>
+            <p class="mb-0">Venues</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info text-center p-3">
+            <h2>@registrationCount</h2>
+            <p class="mb-0">Registrations</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h5>Events</h5>
+                <p class="text-muted small">Create, edit and delete events</p>
+                <button class="btn btn-primary w-100" @onclick='() => NavigationManager.NavigateTo("/admin/events")'>
+                    Manage Events
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h5>Participants</h5>
+                <p class="text-muted small">View and manage participants</p>
+                <button class="btn btn-success w-100" @onclick='() => NavigationManager.NavigateTo("/admin/participants")'>
+                    Manage Participants
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h5>Venues</h5>
+                <p class="text-muted small">Add and update venues</p>
+                <button class="btn btn-warning w-100" @onclick='() => NavigationManager.NavigateTo("/admin/venues")'>
+                    Manage Venues
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h5>Activities</h5>
+                <p class="text-muted small">Manage activity types</p>
+                <button class="btn btn-info w-100" @onclick='() => NavigationManager.NavigateTo("/admin/activities")'>
+                    Manage Activities
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int eventCount, participantCount, venueCount, registrationCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAdmin)
+        {
+            NavigationManager.NavigateTo("/admin/login");
+            return;
+        }
+
+        eventCount = await Db.Events.CountAsync();
+        participantCount = await Db.Participants.CountAsync();
+        venueCount = await Db.Venues.CountAsync();
+        registrationCount = await Db.Registrations.CountAsync();
+    }
+
+    private void Logout()
+    {
+        Session.Logout();
+        NavigationManager.NavigateTo("/");
+    }
+}

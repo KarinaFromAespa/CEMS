@@ -1,4 +1,4 @@
-﻿@page "/venues"
+﻿@page "/admin/venues"
 @rendermode InteractiveServer
 @inject AppDbContext Db
 @inject NavigationManager Nav
@@ -54,15 +54,23 @@
 </table>
 
 @code {
+    [Inject] private SessionService Session { get; set; } = default!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     private List<Venue> venues = new();
     private Venue form = new();
     private int? editingId;
     private bool showForm;
     private string formError = "";
 
-    protected override async Task OnInitializedAsync() =>
+    protected override async Task OnInitializedAsync() 
+    {
+        if (!Session.IsAdmin)
+    {
+        NavigationManager.NavigateTo("/admin/login");
+        return;
+    }
         venues = await Db.Venues.ToListAsync();
-
+    }
     private void StartEdit(Venue v)
     {
         editingId = v.VenueId;

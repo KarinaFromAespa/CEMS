@@ -18,6 +18,7 @@ builder.Services.AddScoped<IParticipantService, ParticipantService>();
 builder.Services.AddScoped<IVenueService, VenueService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+builder.Services.AddSingleton<SessionService>();
 var app = builder.Build();
 
 // Seed data

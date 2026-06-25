@@ -1,4 +1,4 @@
-﻿@page "/activities"
+﻿@page "/admin/activities"
 @rendermode InteractiveServer
 @inject AppDbContext Db
 
@@ -54,14 +54,24 @@
 </table>
 
 @code {
+    [Inject] private SessionService Session { get; set; } = default!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
     private List<Activity> activities = new();
     private Activity form = new();
     private int? editingId;
     private bool showForm;
     private string formError = "";
 
-    protected override async Task OnInitializedAsync() =>
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAdmin)
+        {
+            NavigationManager.NavigateTo("/admin/login");
+            return;
+        }
         activities = await Db.Activities.ToListAsync();
+    }
 
     private void StartEdit(Activity a)
     {

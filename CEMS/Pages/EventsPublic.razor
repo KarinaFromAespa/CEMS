@@ -1,0 +1,99 @@
+﻿@page "/events-public"
+@rendermode InteractiveServer
+@inject IEventService EventService
+
+<h3>📅 Upcoming Events</h3>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <input type="date" class="form-control"
+               value="@filterDate?.ToString("yyyy-MM-dd")"
+               @onchange="e => { filterDate = e.Value != null && !string.IsNullOrEmpty(e.Value.ToString()) ? DateTime.Parse(e.Value.ToString()!) : null; }" />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" @onchange="e => filterActivity = e.Value?.ToString()">
+            <option value="">-- All Activity Types --</option>
+            <option>Workshop</option>
+            <option>Talk</option>
+            <option>Game</option>
+            <option>Other</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary" @onclick="ApplyFilter">Filter</button>
+        <button class="btn btn-secondary ms-1" @onclick="ClearFilter">Clear</button>
+    </div>
+</div>
+
+@if (events == null)
+{
+    <p>Loading...</p>
+}
+else if (!events.Any())
+{
+    <p class="text-muted">No upcoming events found.</p>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var evt in events)
+        {
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">@evt.Name</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-1"><strong>📅</strong> @evt.Date.ToString("dd MMM yyyy") at @evt.Time.ToString(@"hh\:mm")</p>
+                        <p class="mb-1"><strong>📍</strong> @evt.Venue?.Name</p>
+                        <p class="mb-1 text-muted small">@evt.Description</p>
+                        @if (evt.EventActivities.Any())
+                        {
+                            <div class="mt-2">
+                                @foreach (var ea in evt.EventActivities)
+                                {
+                                    <span class="badge bg-secondary me-1">@ea.Activity?.Name</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer">
+                        <a href="/register" class="btn btn-sm btn-success w-100">Register for this Event</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Event>? events;
+    private DateTime? filterDate;
+    private string? filterActivity;
+
+    protected override async Task OnInitializedAsync() => await LoadEvents();
+
+    private async Task LoadEvents()
+    {
+        var all = await EventService.GetAllEventsAsync();
+        events = all.Where(e => e.Date >= DateTime.Today).ToList();
+    }
+
+    private async Task ApplyFilter()
+    {
+        var all = await EventService.GetAllEventsAsync();
+        events = all.Where(e =>
+            e.Date >= DateTime.Today &&
+            (!filterDate.HasValue || e.Date.Date == filterDate.Value.Date) &&
+            (string.IsNullOrEmpty(filterActivity) ||
+             e.EventActivities.Any(ea => ea.Activity?.Type == filterActivity))
+        ).ToList();
+    }
+
+    private async Task ClearFilter()
+    {
+        filterDate = null;
+        filterActivity = null;
+        await LoadEvents();
+    }
+}

@@ -1,0 +1,57 @@
+﻿@page "/admin/login"
+@rendermode InteractiveServer
+@inject SessionService Session
+@inject NavigationManager NavigationManager
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white text-center">
+                <h4 class="mb-0">🔒 Admin Access</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted text-center">Enter the admin PIN to continue.</p>
+                <div class="mb-3">
+                    <label class="form-label">PIN</label>
+                    <input type="password" class="form-control" @bind="pin" @bind:event="oninput"
+                           @onkeydown="OnKeyDown" placeholder="Enter PIN..." />
+                </div>
+                @if (!string.IsNullOrEmpty(error))
+                {
+                    <div class="alert alert-danger py-2">@error</div>
+                }
+                <button class="btn btn-dark w-100" @onclick="Authenticate">Login</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string pin = "";
+    private string error = "";
+
+    protected override void OnInitialized()
+    {
+        if (Session.IsAdmin)
+            NavigationManager.NavigateTo("/admin");
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") Authenticate();
+    }
+
+    private async void Authenticate()   // ← changed to async void
+    {
+        if (Session.TryLogin(pin))
+        {
+            await Task.Yield();          // ← let Blazor finish the current render cycle
+            NavigationManager.NavigateTo("/admin", forceLoad: true);  // ← forceLoad ensures clean navigation
+        }
+        else
+        {
+            error = "Incorrect PIN. Try again.";
+            pin = "";
+        }
+    }
+}
