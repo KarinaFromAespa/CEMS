@@ -1,11 +1,10 @@
 ﻿@page "/events/create"
+@rendermode InteractiveServer
 @page "/events/edit/{Id:int}"
 @inject IEventService EventService
 @inject NavigationManager Nav
-@using CEMS.Models
 @using CEMS.Services
 @using CEMS.Data
-@using Microsoft.EntityFrameworkCore
 
 <h3>@(Id == null ? "Create Event" : "Edit Event")</h3>
 
@@ -15,13 +14,13 @@
 
     <div class="mb-3">
         <label class="form-label">Event Name</label>
-        <InputText class="form-control" @bind-value="model.Name" />
+        <InputText class="form-control" @bind-Value="model.Name" />
     </div>
 
     <div class="row mb-3">
         <div class="col-md-6">
             <label class="form-label">Date</label>
-            <InputDate class="form-control" @bind-value="model.Date" />
+            <InputDate class="form-control" @bind-Value="model.Date" />
         </div>
         <div class="col-md-6">
             <label class="form-label">Time (HH:MM)</label>
@@ -31,12 +30,12 @@
 
     <div class="mb-3">
         <label class="form-label">Description</label>
-        <InputTextArea class="form-control" rows="3" @bind-value="model.Description" />
+        <InputTextArea class="form-control" rows="3" @bind-Value="model.Description" />
     </div>
 
     <div class="mb-3">
         <label class="form-label">Venue</label>
-        <InputSelect class="form-select" @bind-value="model.VenueId">
+        <InputSelect class="form-select" @bind-Value="model.VenueId">
             <option value="0">-- Select Venue --</option>
             @foreach (var v in venues)
             {

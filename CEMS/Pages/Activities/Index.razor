@@ -1,7 +1,6 @@
 ﻿@page "/activities"
+@rendermode InteractiveServer
 @inject AppDbContext Db
-@using CEMS.Models
-@using Microsoft.EntityFrameworkCore
 
 <h3>Activities</h3>
 <button class="btn btn-success mb-3" @onclick="() => showForm = true">+ Add Activity</button>

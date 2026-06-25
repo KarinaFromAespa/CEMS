@@ -1,7 +1,6 @@
 ﻿@page "/participants"
+@rendermode InteractiveServer
 @inject AppDbContext Db
-@using CEMS.Models
-@using Microsoft.EntityFrameworkCore
 
 <h3>Participants</h3>
 <button class="btn btn-success mb-3" @onclick="() => showForm = true">+ Add Participant</button>
