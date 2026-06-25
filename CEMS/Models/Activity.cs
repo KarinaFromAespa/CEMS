@@ -12,9 +12,8 @@ namespace CEMS.Models
 
         [Required(ErrorMessage = "Activity type is required")]
         [StringLength(50, ErrorMessage = "Type cannot exceed 50 characters")]
-        public string Type { get; set; } = string.Empty; // e.g. Workshop, Talk, Game
+        public string Type { get; set; } = string.Empty; 
 
-        // Navigation (many-to-many with Event)
         public ICollection<EventActivity> EventActivities { get; set; } = new List<EventActivity>();
     }
 }

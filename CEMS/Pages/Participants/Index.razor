@@ -109,7 +109,6 @@
             }
             else
             {
-                // Check for duplicate email
                 bool emailExists = await Db.Participants.AnyAsync(p => p.Email == form.Email);
                 if (emailExists) { formError = "A participant with this email already exists."; return; }
 

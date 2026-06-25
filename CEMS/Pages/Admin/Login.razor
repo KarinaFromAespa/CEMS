@@ -41,12 +41,12 @@
         if (e.Key == "Enter") Authenticate();
     }
 
-    private async void Authenticate()   // ← changed to async void
+    private async void Authenticate()   
     {
         if (Session.TryLogin(pin))
         {
-            await Task.Yield();          // ← let Blazor finish the current render cycle
-            NavigationManager.NavigateTo("/admin", forceLoad: true);  // ← forceLoad ensures clean navigation
+            await Task.Yield();
+            NavigationManager.NavigateTo("/admin", forceLoad: true);
         }
         else
         {

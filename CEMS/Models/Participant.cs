@@ -20,7 +20,6 @@ namespace CEMS.Models
         [StringLength(20)]
         public string Phone { get; set; } = string.Empty;
 
-        // Navigation
         public ICollection<Registration> Registrations { get; set; } = new List<Registration>();
     }
 }

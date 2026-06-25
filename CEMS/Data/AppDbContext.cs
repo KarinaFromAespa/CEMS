@@ -17,13 +17,12 @@ namespace CEMS.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Composite keys for junction tables
             modelBuilder.Entity<EventActivity>()
                 .HasKey(ea => new { ea.EventId, ea.ActivityId });
 
             modelBuilder.Entity<Registration>()
                 .HasIndex(r => new { r.ParticipantId, r.EventId })
-                .IsUnique(); // One registration per participant per event
+                .IsUnique();
         }
     }
 }

@@ -18,7 +18,6 @@ namespace CEMS.Models
         [Range(1, int.MaxValue, ErrorMessage = "Capacity must be at least 1")]
         public int Capacity { get; set; }
 
-        // Navigation
         public ICollection<Event> Events { get; set; } = new List<Event>();
     }
 }
