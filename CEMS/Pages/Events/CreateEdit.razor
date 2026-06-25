@@ -1,5 +1,79 @@
-﻿@code {
+﻿@page "/events/create"
+@page "/events/edit/{Id:int}"
+@rendermode InteractiveServer
+
+<h3>@(Id == null ? "Create Event" : "Edit Event")</h3>
+
+<EditForm Model="model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+
+    <div class="mb-3">
+        <label class="form-label">Event Name</label>
+        <InputText class="form-control" @bind-Value="model.Name" />
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Date</label>
+            <InputDate class="form-control" @bind-Value="model.Date" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Time (HH:MM)</label>
+            @* <input type="time" class="form-control" @bind="timeString" /> *@
+            <input type="time"
+       class="form-control"
+       value="@timeString"
+       @onchange="OnTimeChanged" />
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <InputTextArea class="form-control" rows="3" @bind-Value="model.Description" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Venue</label>
+        <InputSelect class="form-select" @bind-Value="model.VenueId">
+            <option value="0">-- Select Venue --</option>
+            @foreach (var v in venues)
+            {
+                <option value="@v.VenueId">@v.Name</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Activities</label>
+        @foreach (var activity in allActivities)
+        {
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       id="act_@activity.ActivityId"
+                       checked="@selectedActivityIds.Contains(activity.ActivityId)"
+                       @onchange="e => ActivityChanged(activity.ActivityId, e)"/>
+                <label class="form-check-label" for="act_@activity.ActivityId">
+                    @activity.Name (@activity.Type)
+                </label>
+            </div>
+        }
+    </div>
+
+    <button type="submit" class="btn btn-primary">@(Id == null ? "Create" : "Save Changes")</button>
+    <button type="button" class="btn btn-secondary ms-2" @onclick='() => NavigationManager.NavigateTo("/events")'>Cancel</button>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">@errorMessage</div>
+    }
+</EditForm>
+
+@code {
     [Parameter] public int? Id { get; set; }
+
+    [Inject] private IEventService EventService { get; set; } = default!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     [Inject] private AppDbContext DbContext { get; set; } = default!;
 
     private Event model = new() { Date = DateTime.Today };
@@ -26,6 +100,18 @@
             }
         }
     }
+    private void OnTimeChanged(ChangeEventArgs e)
+{
+    timeString = e.Value?.ToString() ?? "09:00";
+}
+
+private void ActivityChanged(int activityId, ChangeEventArgs e)
+{
+    bool isChecked =
+        bool.TryParse(e.Value?.ToString(), out var result) && result;
+
+    ToggleActivity(activityId, isChecked);
+}
 
     private void ToggleActivity(int activityId, bool isChecked)
     {
@@ -60,7 +146,7 @@
             else
                 await EventService.CreateEventAsync(model);
 
-            Nav.NavigateTo("/events");
+            NavigationManager.NavigateTo("/events");
         }
         catch (Exception ex)
         {
