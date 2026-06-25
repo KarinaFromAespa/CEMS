@@ -1,81 +1,10 @@
-﻿@page "/events/create"
-@rendermode InteractiveServer
-@page "/events/edit/{Id:int}"
-@inject IEventService EventService
-@inject NavigationManager Nav
-@using CEMS.Services
-@using CEMS.Data
-
-<h3>@(Id == null ? "Create Event" : "Edit Event")</h3>
-
-<EditForm Model="model" OnValidSubmit="HandleSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary class="text-danger" />
-
-    <div class="mb-3">
-        <label class="form-label">Event Name</label>
-        <InputText class="form-control" @bind-Value="model.Name" />
-    </div>
-
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <label class="form-label">Date</label>
-            <InputDate class="form-control" @bind-Value="model.Date" />
-        </div>
-        <div class="col-md-6">
-            <label class="form-label">Time (HH:MM)</label>
-            <input type="time" class="form-control" @bind="timeString" />
-        </div>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Description</label>
-        <InputTextArea class="form-control" rows="3" @bind-Value="model.Description" />
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Venue</label>
-        <InputSelect class="form-select" @bind-Value="model.VenueId">
-            <option value="0">-- Select Venue --</option>
-            @foreach (var v in venues)
-            {
-                <option value="@v.VenueId">@v.Name</option>
-            }
-        </InputSelect>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Activities</label>
-        @foreach (var activity in allActivities)
-        {
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox"
-                       id="act_@activity.ActivityId"
-                       checked="@selectedActivityIds.Contains(activity.ActivityId)"
-                       @onchange="e => ToggleActivity(activity.ActivityId, (bool)e.Value!)" />
-                <label class="form-check-label" for="act_@activity.ActivityId">
-                    @activity.Name (@activity.Type)
-                </label>
-            </div>
-        }
-    </div>
-
-    <button type="submit" class="btn btn-primary">@(Id == null ? "Create" : "Save Changes")</button>
-    <button type="button" class="btn btn-secondary ms-2" @onclick='() => Nav.NavigateTo("/events")'>Cancel</button>
-
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger mt-3">@errorMessage</div>
-    }
-</EditForm>
-
-@code {
+﻿@code {
     [Parameter] public int? Id { get; set; }
     [Inject] private AppDbContext DbContext { get; set; } = default!;
 
     private Event model = new() { Date = DateTime.Today };
     private List<Venue> venues = new();
-    private List<Activity> allActivities = new();
+    private List<CEMS.Models.Activity> allActivities = new();
     private HashSet<int> selectedActivityIds = new();
     private string timeString = "09:00";
     private string errorMessage = "";
@@ -122,7 +51,6 @@
                 return;
             }
 
-            // Rebuild EventActivities
             model.EventActivities = selectedActivityIds
                 .Select(id => new EventActivity { ActivityId = id })
                 .ToList();

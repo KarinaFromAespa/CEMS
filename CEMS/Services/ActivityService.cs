@@ -53,7 +53,7 @@ namespace CEMS.Services
             if (!string.IsNullOrWhiteSpace(name))
                 query = query.Where(a => a.Name.Contains(name));
             if (!string.IsNullOrWhiteSpace(category))
-                query = query.Where(a => a.Category.Contains(category));
+                query = query.Where(a => a.Type.Contains(category));
 
             return await query.OrderBy(a => a.Name).ToListAsync();
         }

@@ -52,7 +52,7 @@ namespace CEMS.Services
             if (!string.IsNullOrWhiteSpace(name))
                 query = query.Where(v => v.Name.Contains(name));
             if (!string.IsNullOrWhiteSpace(location))
-                query = query.Where(v => v.Location.Contains(location));
+                query = query.Where(v => v.Address.Contains(location));
 
             return await query.OrderBy(v => v.Name).ToListAsync();
         }
